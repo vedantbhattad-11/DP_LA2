@@ -1,0 +1,54 @@
+digraph PaymentSystem {
+  graph [rankdir=LR, bgcolor="white", pad="0.25", nodesep="0.35", ranksep="0.65", splines=ortho, fontname="Arial", label="SMART PAYMENT PROCESSING — UML CLASS OVERVIEW (11 CORE PATTERNS)", labelloc=t, fontsize=20];
+  node [shape=record, style="rounded,filled", fillcolor="#F5F8FC", color="#45617D", fontname="Arial", fontsize=9, margin="0.08,0.05"];
+  edge [color="#52677D", arrowsize=0.7, fontname="Arial", fontsize=8];
+  subgraph cluster_core { label="Core payment architecture"; color="#AAB8C7"; style="rounded";
+    Main [label="{Main|+ main()\l+ makePayment()\l}"];
+    Request [label="{PaymentRequest (Builder)|amount, method, provider, userId\l+ builder() / build()\l}"];
+    Profile [label="{PaymentProfile (Prototype)|method, provider, maxRetries\l+ clone() / copyFor()\l}"];
+    AF [label="{PaymentComponentFactory (Abstract Factory)|+ createValidator()\l+ createReceiptGenerator()\l}"];
+    Validator [label="{PaymentValidator|+ validate(amount)\l}"];
+    Receipt [label="{ReceiptGenerator|+ generateReceipt(...)\l}"];
+    Payment [label="{Payment (Bridge Abstraction)|+ makePayment(amount)\l}"];
+    Provider [label="{PaymentProvider (Bridge Implementor)|+ processPayment(...)\l}"];
+    Service [label="{PaymentService (Proxy Subject)|+ processPayment(txn)\l}"];
+    Proxy [label="{PaymentProxy (Proxy)|+ processPayment(txn)\l}"];
+    Real [label="{RealPaymentService|+ processPayment(txn)\l}"];
+    Txn [label="{Transaction|id, amount, method, provider\lstatus, failureReason\l+ saveState() / restoreState()\l}"];
+    Store [label="{TransactionStore (Singleton)|+ getInstance()\l+ createTransaction(...)\l}"];
+    Main -> Request [label="builds"];
+    Main -> Profile [label="clones profile"];
+    Main -> AF [label="selects family"];
+    AF -> Validator [label="creates"];
+    AF -> Receipt [label="creates"];
+    Payment -> Provider [label="delegates to"];
+    Proxy -> Service [style=dashed, arrowhead=empty, label="implements"];
+    Real -> Service [style=dashed, arrowhead=empty, label="implements"];
+    Proxy -> Real [label="guards"];
+    Real -> Payment [label="uses"];
+    Main -> Txn [label="creates"];
+    Main -> Store [label="uses"];
+    Store -> Txn [label="stores", arrowhead=odiamond];
+  }
+  subgraph cluster_workflow { label="Workflow coordination"; color="#79B5B0"; style="rounded";
+    Mediator [label="{PaymentMediator (Mediator)|validator + service + receipt\l+ execute(txn)\l}", fillcolor="#E5F6F2", color="#16877B"];
+    Template [label="{PaymentWorkflowTemplate (Template Method)|+ process(txn, mediator)\l# beforeProcessing()\l# afterProcessing()\l}", fillcolor="#E5F6F2", color="#16877B"];
+    Standard [label="{StandardPaymentWorkflow|hooks for standard payment\l}", fillcolor="#E5F6F2", color="#16877B"];
+    Main -> Template [label="runs"];
+    Template -> Mediator [label="calls"];
+    Standard -> Template [style=dashed, arrowhead=empty, label="extends"];
+    Mediator -> Validator [label="coordinates"];
+    Mediator -> Service [label="coordinates"];
+    Mediator -> Receipt [label="coordinates"];
+  }
+  subgraph cluster_failure { label="Failure handling"; color="#D7B68B"; style="rounded";
+    Handler [label="{PaymentFailureHandler (Chain of Responsibility)|+ setNext() / handle()\l}", fillcolor="#FFF4E5", color="#B8792C"];
+    Retry [label="{RetryHandler|+ doHandle()\l}", fillcolor="#FFF4E5", color="#B8792C"];
+    Strategy [label="{RetryStrategy (Strategy)|+ shouldRetry()\l+ simulatedRetrySucceeds()\l}", fillcolor="#FFF4E5", color="#B8792C"];
+    Memento [label="{TransactionMemento (Memento)|saved status + failure reason\l}", fillcolor="#FFF4E5", color="#B8792C"];
+    Handler -> Retry [label="chain includes"];
+    Retry -> Strategy [label="uses"];
+    Txn -> Memento [label="creates snapshot"];
+    Retry -> Txn [label="updates/restores"];
+  }
+}
